@@ -3,10 +3,10 @@
 - 공식 홈페이지의 설치 가이드를 참고한다.
 ( URL - https://jupyterlab.readthedocs.io/en/stable/getting_started/installation.html )
 
-![image](uploads/356e490db927f7aa7de684143fdc16fa/image.png)<br/>
+![image](https://user-images.githubusercontent.com/71695489/127601597-65818686-fcbb-4f36-baab-7c589023dcc9.png)<br/>
 - 콘다 환경에서는 다음 명령어를 통해 설치한다. ` $ conda install -c conda-forge jupyterlab `
 
-![image](uploads/753e25420b17221af5da4bb5c5a9e627/image.png)<br/>
+![image](https://user-images.githubusercontent.com/71695489/127601630-c7b5d0e0-138b-4ff5-810d-74f0733f3e89.png)<br/>
 - pip 를 사용하는 경우에도 간단하게 다음 명령어를 통해서 설치한다. pip 또는 pip3 를 사용한다.` $ pip install jupyterlab `
 
 <br/>
@@ -21,18 +21,18 @@
 ### 1. 다음 툴들이 설치 되어있는지 확인한다.
 - [Node.js 12+](https://nodejs.org/en/)
   다음처럼 ` $node -v ` 명령어를 통해 설치 여부 및 버전 확인 가능<br/>
-![image](uploads/065e5616bd118a0b75129ad4f6c62f62/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127601673-1d7d91c9-63ee-46da-a253-b2e49af53921.png)
 
 - [Python 3.x](https://www.python.org/downloads/)
   ` $ python --version ` 또는 ` $ python3 --version ` 명령어를 통해서 설치 여부 및 버전 확인 가능<br/>
-![image](uploads/d637460c736dc4c580195ef6c0a780c0/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127601727-4a1a8282-003c-42d6-972e-4fc8550e70b6.png)
 
 ### 2. 설치 자체는 간단하다.
 
-![image](uploads/e312c8a4996524d7b1b17e8cdba30f78/image.png)<br/>
+![image](https://user-images.githubusercontent.com/71695489/127601763-095dbaec-e3ad-48d7-b9ef-bc7647847e38.png)<br/>
 - 콘다 환경에서는 다음 명령어를 통해 설치한다. ` $ conda install -c conda-forge elyra `
 
-![image](uploads/2b6a16831c2c3333ed1f0de37cc07479/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127601851-1c610586-7bed-46b7-961f-0af9e32fa3eb.png)
 - pip를 사용하는 경우에도 간단하게 다음 명령어를 통해서 설치한다. pip 또는 pip3 를 사용한다. ` $ pip3 install --upgrade elyra `
 
 ### 3. 설치 이슈 문제 해결
@@ -49,15 +49,15 @@
 
   1. ` $ jupyter server extension list `<br/>
 아래의 목록들이 enabled 되어있는지 확인한다.<br/>
-![image](uploads/2526719788c7fd3e35995da5d54b069d/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127601894-d7609fe2-120e-478d-bd38-b746d1da7a23.png)
 
   2. ` $ jupyter serverextension list `<br/>
 아래의 목록들이 enabled 되어있는지 확인한다.<br/>
-![image](uploads/905fcc09953fd65d2e99637ee87c1732/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127601924-3671ed60-d220-49c6-ab06-c99ff97e863b.png)
 
   3. ` $ jupyter labextension list `<br/>
 아래의 목록들이 enabled 되어있는지 확인한다.<br/>
-![image](uploads/3abf7a67bb7eec6027038be4ae854b11/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127601964-99553963-aca3-43ca-8417-6beab7135133.png)
 
 <br/>
 <br/>
