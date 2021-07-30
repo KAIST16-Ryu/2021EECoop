@@ -1,4 +1,4 @@
-![image](https://user-images.githubusercontent.com/84768279/127245192-bdea5168-5879-4095-80f4-ebce7034087a.png)
+![image](https://user-images.githubusercontent.com/71695489/127601236-2049639f-e979-4565-8715-9687939fbc66.png)
 
 Juypter Lab에서 개발을 마치고 Elyra를 통해 pipeline을 구성한다. 그리고 구성된 pipeline은 kubeflow와 같은 운영 플랫폼에 올라가게 된다. 이때, Elyra에서 kubeflow로 넘어가기까지 어떤 data가 쓰이고 저장되고 변환되는지 그 구조를 파해쳐보자. 
 
