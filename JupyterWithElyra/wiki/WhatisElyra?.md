@@ -11,7 +11,7 @@
 
 - Elyra 이란, Jupyter Lab Extension 기능 중 하나이다. 현재 머신러닝, 딥러닝 개발 환경에서 주피터를 많이 사용하고 있는데, Elyra는 주피터상에서 개발한 각 단계의 작업을 하나의 파이프라인으로 묶어서 다양한 환경에서 실행할 수 있도록 기능을 제공하고 있다. 아래의 그림을 보면 Elyra 가 지원하는 기능에 대해서 몇 가지 서술하고 있다. 기본적인 정보는 공식 홈페이지에서 확인할 수 있다. [여기](https://elyra.readthedocs.io/en/latest/getting_started/overview.html)<br/>
 
-![image](uploads/6a966b352700b50ffb8dff2080e7cb14/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127599571-1ff469ac-123e-461b-a505-86c0d8b19574.png)
  
 <br/>
 <br/>
