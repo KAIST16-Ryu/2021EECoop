@@ -22,7 +22,7 @@
 
 - Tensorflow 에서는 추론을 위한 모델 저장에 대한 메서드를 정의하고 있다.  : tf.keras.models.save_model()
 
-![image](uploads/f12444366d7471ad2436175cd09d8256/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127609459-f9693a02-c3d8-43a5-90b2-d866765cb747.png)
 
 - 위와 같이 모델을 저장하고, 이후에 여기서 저장한 export_path 경로를 통해서 모델을 불러온다.
 
@@ -41,8 +41,8 @@ tensorflow/serving &
 ##### 3. 모델을 포함한 추론 서버를 열었기 때문에, 서버에 입력 데이터를 주고 결괏값을 받아와야 한다. TF serving 에서는 별도로 추론에 대한 전처리 과정을 포함하고 있지 않기 때문에, 필요하다면 추론 입력 데이터에 대해서 전처리를 한 후 추론 서버에 Request 를 보내야 한다.
 
 - 코드는 다음과 같다.
-![image](uploads/01fb0a5b065096a4a36cd1bbfb003ce7/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127609485-7a1ba6e9-0196-4dcd-b21f-c6dd6d766d5c.png)
 
 - 코드를 실행하면, 다음과 같은 결과를 확인할 수 있다.
-![Screenshot_from_2021-07-01_14-07-32](uploads/ae8ec5ed571a014ce96b1f3fe20cf93c/Screenshot_from_2021-07-01_14-07-32.png)
+![image](https://user-images.githubusercontent.com/71695489/127609518-6a72ed68-739f-4b2d-ad54-2a4420b3dd8d.png)
 
