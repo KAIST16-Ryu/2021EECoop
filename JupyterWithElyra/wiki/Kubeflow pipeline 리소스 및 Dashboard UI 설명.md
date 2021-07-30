@@ -11,7 +11,7 @@ Kubeflow 는 다음과 같이 설명할 수 있다.
 - ML system 을 개발(developement) 및 배포(deployment) 하기 위한 플랫폼
   => 운영(management), 및 확장(scaling)이 가능.
 
-![image](uploads/3d5362421245e1fb06861dde1dd7d600/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127603897-58fd52eb-0c67-4c84-a751-c44f743722e3.png)
 - 다음 그림을 보면 다양하게 존재하는 ML tools 및 Workflow tools 등을 kubeflow 리소스를 사용하여 kubernetes 환경 위에서 실행하고, 그 과정에서 쿠버네티스의 장점(스케일링, 실행 관리 등)을 활용 가능하다는 것을 알 수 있다.
 
 - 조금 더 자세하게 설명하면, 머신러닝, 딥러닝을 위한 파이프라인을 구성하기 위해서는 기존의 일련의 작업 흐름 뿐만이 아니라, 각 단계를 수행하고, 그 과정에서 발생한 결괏값 등을 필요한 다음 단계의 입력값으로 구성하는 등의 추가적인 작업이 필요하다. 또한, 파라미터를 변경하면서 파이프라인을 지속적으로 실행하는 과정의 편의성 또한 제공할 필요가 있고, 각각의 결과를 편리하게 비교하고, 모니터링 할 수 있어야 한다. kubeflow 는 이런 과정에서 편의성을 제공한다.
@@ -24,7 +24,7 @@ Kubeflow 는 다음과 같이 설명할 수 있다.
 
 # 2. Kubeflow 항목
 
-![image](uploads/b5de8216465bfec79d01e8e24da8d617/image.png)<br/>
+![image](https://user-images.githubusercontent.com/71695489/127603928-5a1aef50-206f-43d8-a216-cf586f61b5d0.png)<br/>
 
 - 실제로 Kubeflow 자체도 여러 기능이 있는 리소스의 집합이라고 생각할 수 있다. 선호에 따라서 일부 모듈만 설치해서 사용하는 것도 가능하다. 우리는 이 중에서 실제로 Elyra 와 함께 사용하는 몇몇 기능에 대해서만 설명하고자 한다.
 
@@ -44,7 +44,7 @@ Kubeflow 는 다음과 같이 설명할 수 있다.
 
 - 기본적으로 Kubeflow Dashboard 에서 확인할 수 있는 항목은 다음과 같다.
 
-![image](uploads/f8f6af89213fea495a885d43eb6393a7/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127603962-23a0ab8e-393f-4548-8968-a1e1617e27ca.png)
 
 - 여러 항목들이 있는데, 간단하게 설명하면 다음과 같다.<br/>
 
@@ -68,7 +68,7 @@ Kubeflow 는 다음과 같이 설명할 수 있다.
 
 # Pipeline
 
-![image](uploads/304bf943d3902de5b7e8e91fb9e1102a/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127604018-6cba1d5c-99e0-4b23-917f-d2537e4959fe.png)
 
 - **Kubeflow Pipeline** Dashboard 항목은 크게 다음과 같다.
 
@@ -81,29 +81,29 @@ Kubeflow 는 다음과 같이 설명할 수 있다.
 
 ### 1. pipelines
 
-![image](https://user-images.githubusercontent.com/84768279/127106957-25065838-9c31-4577-809b-2f4f33c25585.png)
+![image](https://user-images.githubusercontent.com/71695489/127604096-70c7f5f5-53df-4624-9b83-a70a5826ff76.png)
 
 - Machine Learning Workflow (Ex) Argo Workflow)에서 사용하는 노드들과, 해당 노드들간의 작업 처리 규칙(Ex) 순서)을 그래프 형태로 정의하고, 개별 inputs 및 outputs에 대한 정의를 포함한 것. (여기서 파이프라인은 실제 입력 데이터에 대한 정보를 직접 보관하고 있지 않다. 해당 데이터의 위치 정보 등을 가졌다가 실제 run 시에 거기로부터 가져온다.)
 
 - 일반적으로 파이프라인을 떠올렸을 때 떠오르는 일련의 작업 흐름을 실행하기 위해서 필요한 모든 데이터, 실행 코드, 중간 산물 및, 작업 흐름에 대한 정의를 포함한다. (실제 산물을 보유한 것이 아닌, 해당 산물의 형식, 경로 등에 대한 정보이다.)
 
 - 다음과 같이 파이프라인 목록에서 현재 보유 중인 파이프라인의 항목을 조회할 수 있고, 새로운 파이프라인은 업로드할 수 있다.
-![image](uploads/ee562fb3ce0035044cceba86a76543fb/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127604117-53de11a4-14fe-4cb7-9714-5aafb4b371a0.png)
 
 - 또한 파이프라인을 업로드하기 위해서는 파이프라인 정보에 대한 명세를 담은 yaml 파일 (Ex) Argo Workflow) 을 .yaml, .zip. .tar.gz 등의 형식으로 업로드해야 한다.<br />
-![image](uploads/f89451870533527fd9fcc802d5626002/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127604153-180c3219-37b3-4d94-b0d8-5664bbc56125.png)
 
 - 이렇게 개별 파이프라인을 조회하면, 다음과 같이 그래프의 형태로 GUI 로 보여주거나, yaml 파일을 보여준다. 파이프라인의 구조에 대한 정보를 포함하기 때문에 실제 실행 후 이력(각각의 실행 결과, 동적으로 생성되는 정보)에 대한 정보는 없다. (run 에 있다.)<br />
-![image](uploads/11e1e75b710e14a23241297f15d9192f/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127604787-c43b5ccd-ff5a-4d96-9399-e4f98b127ed0.png)
 
-![image](uploads/0de7c0640d70ed1e4ef3bba61a53d7f4/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127604836-2d98a28c-3b03-49a5-841d-4e98d1141e35.png)
 
 <br/>
 <br/>
 <br/>
 
 # Experiment
-![image](https://user-images.githubusercontent.com/84768279/127107157-eb3fce07-2668-411d-a4af-e1b982ee80ae.png)
+![image](https://user-images.githubusercontent.com/71695489/127604880-6b7239f1-9d8e-4733-a5d8-16e13e69b22a.png)
 
 - 다양한 파이프라인을 실행할 수 있는 작업공간.
 
@@ -111,15 +111,15 @@ Kubeflow 는 다음과 같이 설명할 수 있다.
 
 - 아래 그림에서 Experiment 목록에서 하나를 선택해 들어가 보면,
 
-![image](https://user-images.githubusercontent.com/84768279/127107848-7f77e9a5-e802-4929-9baf-9db94d1e683e.png)
+![image](https://user-images.githubusercontent.com/71695489/127604972-ca2e3022-50ee-4f8e-ba4a-0bccf990dd97.png)
 
 - 각종 파이프라인에 대한 개별 실행 이력 (run) 의 목록을 확인할 수 있다.
 
-![image](uploads/2a0afdb4da946a07f9e3b05204123ad7/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127605010-79d88656-5132-4077-ab63-0806120b06da.png)
 
 - 그리고 run 항목을 보면,
 
-![image](uploads/e9cc2237b5e96c3f96a2a85fab2347a9/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127605071-1c80831a-3e22-484e-a49f-f06472764c3d.png)
 
 - 다음과 같이 각 실행에서 생성된 각 노드의 로그, input, output 데이터들을 조회할 수 있다.
 
@@ -133,7 +133,7 @@ Kubeflow 는 다음과 같이 설명할 수 있다.
  - 이 중에서 용량이 크고, 파일 형식으로 된 것을을 artifacts 로 만들어서 저장한다.
  - 모든 run 에서 사용된 artifacts 들을 여기에 항목으로 나열하고 있다.
 
-![image](uploads/383bfa2536d7f480a75a52d2d17e6572/image.png)<br/>
+![image](https://user-images.githubusercontent.com/71695489/127605115-887bb85c-faa1-4a9d-a3b3-27e1f828cc86.png)<br/>
 
 - 해당 URI 에 들어가 보면 개별 run 에서 생성되거나, 활용했던 artifacts 데이터를 다운받아 보거나, 개별 artifacts 를 클릭하여 상세 정보를 확인할 수 있다.
 
