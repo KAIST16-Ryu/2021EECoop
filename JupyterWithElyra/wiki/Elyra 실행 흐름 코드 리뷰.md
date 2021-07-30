@@ -17,26 +17,26 @@
 # Elyra의 내부 실행 흐름 파악.
 
 - Jupyter + Elyra 에서 작업한 내용을 우리가 원하는 환경에서 실행할 수 있는 Custom Processor 제작하려면, Elyra의 내부 실행 흐름을 어느 정도 파악하고 있어야 한다. 다음과 같이 UI 상에서 파이프라인을 실행했을 때, 가장 처음으로 내부에서 진행되는 코드의 흐름은 다음과 같다.<br/>
-![image](uploads/d00c7453f2e3858ddac4c420e2b2df48/image.png)<br/>
+![image](https://user-images.githubusercontent.com/71695489/127600838-c2448dd4-d242-4b04-948c-f5197c78f0e1.png)<br/>
 
 <br/>
 
 - 처음에 호출되는 부분은 [ elyra-ai/elyra/cli/pipeline_app.py ](https://github.com/elyra-ai/elyra/blob/3ac7544c95eaf172a8c86f87e3234acf8253070b/elyra/cli/pipeline_app.py#L240) 의 run 함수이다. Local 환경이 아니라, 다른 runtime 에서 실행되는 경우에는 [ submit 함수 ](https://github.com/elyra-ai/elyra/blob/3ac7544c95eaf172a8c86f87e3234acf8253070b/elyra/cli/pipeline_app.py#L206) 를 호출해 시작한다. 내부 코드는 거의 유사하다.<br/>
-![image](uploads/2604eedb769479ee02862a365c1fe90d/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127600899-df000204-fe5d-486a-b1ee-5017b3f45989.png)
 
 <br/>
 <br/>
 <br/>
 
 - 위의 그림에서 [ _execute_pipeline(pipeline_definition) ](https://github.com/elyra-ai/elyra/blob/3ac7544c95eaf172a8c86f87e3234acf8253070b/elyra/cli/pipeline_app.py#L152) 함수는 runtime 항목이 추가된 json 데이터를 전달 받아 [Elyra 리소스 데이터 구조]()에서 설명했던 Pipeline 객체와 Operator 객체로 보관한다. 그리고 그 정보를 토대로 각각의 runtime processor의 process 함수를 호출하여 거기서부터 pipeline을 실행한다.<br/>
-![image](uploads/850384424d4a8f5330cfa69b6f109572/image.png)<br/>
+![image](https://user-images.githubusercontent.com/71695489/127600987-ebb1750f-54c3-4260-bafb-78e91e5dc3e0.png)<br/>
 
 <br/>
 <br/>
 <br/>
 
 - 위에서 호출된 [ process 함수 ](https://github.com/elyra-ai/elyra/blob/3ac7544c95eaf172a8c86f87e3234acf8253070b/elyra/pipeline/processor.py#L116)는 실제로 선택한 runtime에 맞는 함수를 다음과 같은 방법으로 호출한다.
-![image](uploads/c2e92a1890195efe479eb0675a868e49/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127601044-6780a736-dc74-4342-8565-1bbb6ada672d.png)
 
 <br/>
 <br/>
