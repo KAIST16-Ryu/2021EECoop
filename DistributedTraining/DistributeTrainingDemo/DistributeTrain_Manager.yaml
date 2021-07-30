@@ -1,0 +1,37 @@
+# Description.
+# Made by Ryu Eojin, Institue of Technology, Platform Department.
+
+# .yaml form of DistributeTrain Manager Pod.
+# Job Resource should create this pod to enable distribute training.
+
+apiVersion: v1
+kind: Pod
+metadata:
+  # Specify namespace if needed.
+  namespace: default
+
+  # Job Resource "Should" add Identification number like other training pod.
+  # Train Pod name example ) 
+  name: distributetrain-manager
+
+  # Lable if needed.
+  labels:
+    who: manager
+
+spec:
+  # This ServiceAccount "!!!Should be contained!!!" to access kubernetes API server.
+  serviceAccountName: distributetrain-serviceaccount
+
+  containers:
+    # Same as Pod name.
+  - name: distributetrain-manager
+
+    image: neo21top/distributetrain_managerimage_v1
+    command: ["/bin/bash"]
+
+    # Execute Shell script command with arguments.
+    # Regular Order of arguments. : ( num_gpus, image_name, port, name of train.py, host_network_option)
+    args: ["-c", "/examples/Manager.sh 2 neo21top/distributetrain_baseimage_v1 14000 Train.py True"]
+    #args: ["-c", "sleep infinity"]
+
+  restartPolicy: OnFailure
