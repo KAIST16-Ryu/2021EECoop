@@ -1,0 +1,24 @@
+# Description.
+# Made by Ryu Eojin, Institue of Technology, Platform Department.
+
+# Provide authorization for the "manager pod" to handle kubernetes resources inside the container.
+# You should create 3 resources in the following order.
+# 1) ClusterRole
+# 2) ServiceAccount
+# 3) ClusterRoleBinding
+# It should be created "In advance", "Only one time" for each cluster.
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: distributetrain-clusterrolebinding
+subjects:
+  # Binding clusterrole for the distributetrain serviceaccount.
+- kind: ServiceAccount
+  name: distributetrain-serviceaccount
+  namespace: default
+roleRef:
+  # Target clusterrole for distributetrain.
+  kind: ClusterRole
+  name: distributetrain-clusterrole
+  apiGroup: rbac.authorization.k8s.io
