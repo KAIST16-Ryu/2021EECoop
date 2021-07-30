@@ -11,15 +11,15 @@ kfserving tensorflow 기본 튜토리얼.<br/>
 
 - 관련 내용을 다시 설명하자면 다음과 같다.
 
-![image](uploads/8dd5b8392db162c963368084ae95a396/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127602098-c72a94e5-e892-4edf-ae60-be7b6991e7a7.png)
 
 1. Minio URL 에 접근해서 위를 보면, not secure 경고와 함께 다음 란이 보이는 것을 확인할 수 있다.
 
-![image](uploads/345987e816864ba1bec3c44dea14af6a/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127602132-97afe83c-ff76-436d-b2aa-3ca3c6d677f9.png)
 
 2. 클릭하면 보이는 여러 cookies 들 중에 authservice_session 을 선택하고, Content 항목에 있는 내용을 복사한다.
 
-![image](uploads/efa4ef021a33486ff066e88fca0a9680/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127602176-a8ba597e-2143-4887-b0c0-6bb9e406db15.png)
 
 3. 복사한 내용을 SESSION 쉘 변수로 추가하여 사용한다.
   SESSION = CONTENTS
@@ -29,12 +29,12 @@ kfserving tensorflow 기본 튜토리얼.<br/>
 다음 URL에는 아래와 같은 step 이 있다.
 ( https://github.com/kubeflow/kfserving/tree/master/docs/samples/v1alpha2/tensorflow )
 
-![image](uploads/0597be9d0e3697ff9048a8978d4dc684/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127603694-e3c77117-ef7f-4894-b8dc-c32f73ae9081.png)
 
 위의 방법을 아래와 같이 변경해서 진행한다.
 여기서 INGRESS_HOST 와 INGRESS_PORT 는 Kubeflow Dashboard 에 접근하기 위한 Endpoint 와 Port 이다.
 
-![image](uploads/f839b9a068170e8e3cedd6ad485562c0/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127603733-63364d50-8c1f-4c9c-bb1d-cd0e0c88d91b.png)
 
 <br/>
 <br/>
