@@ -1,1 +1,668 @@
-hel
+#
+# Copyright 2018-2021 Elyra Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+import autopep8
+import os
+import re
+import tempfile
+import time
+import requests
+import json
+import yaml
+import tarfile
+import copy
+
+from black import format_str, FileMode
+from datetime import datetime
+from elyra._version import __version__
+from elyra.metadata import MetadataManager
+from elyra.pipeline import RuntimePipelineProcess, PipelineProcessor, PipelineProcessorResponse
+from elyra.util.path import get_absolute_path
+from jinja2 import Environment, PackageLoader
+from kfp import Client as ArgoClient
+from kfp import compiler as kfp_argo_compiler
+from kfp.aws import use_aws_secret
+from kfp_tekton import TektonClient, compiler as kfp_tekton_compiler
+#from elyra.pipeline import T3qNotebookOp
+from kfp_notebook.pipeline import NotebookOp
+from kfp_server_api.exceptions import ApiException
+from urllib3.exceptions import LocationValueError, MaxRetryError
+
+from kfp.dsl import InputArgumentPath
+
+
+class T3QKfpPipelineProcessor(RuntimePipelineProcess):
+    _type = 't3qkfp'
+
+    # Provide users with the ability to identify a writable directory in the
+    # running container where the notebook | script is executed. The location
+    # must exist and be known before the container is started.
+    # Defaults to `/tmp`
+    WCD = os.getenv('ELYRA_WRITABLE_CONTAINER_DIR', '/tmp').strip().rstrip('/')
+
+    @property
+    def type(self):
+        return self._type
+
+    def process(self, pipeline):
+        """Runs a pipeline on Kubeflow Pipelines
+
+        Each time a pipeline is processed, a new version
+        is uploaded and run under the same experiment name.
+        """
+
+        t0_all = time.time()
+        timestamp = datetime.now().strftime("%m%d%H%M%S")
+
+        runtime_configuration = self._get_metadata_configuration(namespace=MetadataManager.NAMESPACE_RUNTIMES,
+                                                                 name=pipeline.runtime_config)
+
+        api_endpoint = runtime_configuration.metadata['api_endpoint']
+        cos_endpoint = runtime_configuration.metadata['cos_endpoint']
+        cos_bucket = runtime_configuration.metadata['cos_bucket']
+
+        user_namespace = runtime_configuration.metadata.get('user_namespace')
+
+        # TODO: try to encapsulate the info below
+        api_username = runtime_configuration.metadata.get('api_username')
+        api_password = runtime_configuration.metadata.get('api_password')
+
+        engine = runtime_configuration.metadata.get('engine')
+
+        pipeline_name = pipeline.name
+        try:
+            # Connect to the KFP server and determine whether
+            # a pipeline with this name was already uploaded
+            session_cookie = None
+
+            if api_username and api_password:
+                endpoint = api_endpoint.replace('/pipeline', '')
+                session_cookie = self._get_user_auth_session_cookie(endpoint,
+                                                                    api_username,
+                                                                    api_password)
+
+            # Create a KFP client
+            if 'Tekton' == engine:
+                client = TektonClient(host=api_endpoint,
+                                      cookies=session_cookie)
+            else:
+                client = ArgoClient(host=api_endpoint,
+                                    cookies=session_cookie)
+
+            # Determine whether a pipeline with the provided
+            # name already exists
+            pipeline_id = client.get_pipeline_id(pipeline_name)
+            if pipeline_id is None:
+                # The KFP default version name is the pipeline
+                # name
+                pipeline_version_name = pipeline_name
+            else:
+                # Append timestamp to generate unique version name
+                pipeline_version_name = f'{pipeline_name}-{timestamp}'
+            # Establish a 1:1 relationship with an experiment
+            # work around https://github.com/kubeflow/pipelines/issues/5172
+            experiment_name = pipeline_name.lower()
+            # Unique identifier for the pipeline run
+            job_name = f'{pipeline_name}-{timestamp}'
+            # Unique location on COS where the pipeline run artifacts
+            # will be stored
+            cos_directory = f'{pipeline_name}-{timestamp}'
+
+        except MaxRetryError as ex:
+            raise RuntimeError('Error connecting to pipeline server {}'.format(api_endpoint)) from ex
+        except LocationValueError as lve:
+            if api_username:
+                raise ValueError("Failure occurred uploading pipeline, check your credentials") from lve
+            else:
+                raise lve
+
+        # Verify that user-entered namespace is valid
+        try:
+            client.list_experiments(namespace=user_namespace,
+                                    page_size=0)
+        except ApiException as ae:
+            error_msg = f"{ae.reason} ({ae.status})"
+            if ae.body:
+                error_body = json.loads(ae.body)
+                error_msg += f": {error_body['error']}"
+            if error_msg[-1] not in ['.', '?', '!']:
+                error_msg += '.'
+
+            namespace = "namespace" if not user_namespace else f"namespace {user_namespace}"
+
+            self.log.error(f"Error validating {namespace}: {error_msg}")
+            raise RuntimeError(f"Error validating {namespace}: {error_msg} " +
+                               "Please validate your runtime configuration details and retry.") from ae
+
+        self.log_pipeline_info(pipeline_name, "submitting pipeline")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            pipeline_path = os.path.join(temp_dir, f'{pipeline_name}.tar.gz')
+            # pipeline_path = os.path.join('/home/t3qmember/Desktop/t3qflowdemo', f'{pipeline_name}.tar.gz')
+
+            # self.log.debug("Creating temp directory %s", temp_dir)
+
+            # Compile the new pipeline
+            try:
+                pipeline_function = lambda: self._cc_pipeline(pipeline,  # nopep8 E731
+                                                              pipeline_name=pipeline_name,
+                                                              pipeline_version=pipeline_version_name,
+                                                              experiment_name=experiment_name,
+                                                              cos_directory=cos_directory)
+                if 'Tekton' == engine:
+                    kfp_tekton_compiler.TektonCompiler().compile(pipeline_function, pipeline_path)
+                else:
+                    kfp_argo_compiler.Compiler().compile(pipeline_function, pipeline_path)
+            except Exception as ex:
+                raise RuntimeError('Error compiling pipeline {} for engine {} at {}'.
+                                   format(pipeline_name, engine, pipeline_path), str(ex)) from ex
+
+            self.log.debug("Kubeflow Pipeline was created in %s", pipeline_path)
+
+            # Add additional yaml requirements for T3Qflow.
+            # Work here.
+            # T3Q Platform Department Intern Ryu Eojin handle this.
+            ################################################################################################
+            ################################################################################################
+
+            # 1. 압축 해제 -> 파일 이름은 pipeline.yaml 로 고정이다.
+            kfp_yaml_tar = tarfile.open(pipeline_path)
+            kfp_yaml_tar.extractall(path=temp_dir)
+            kfp_yaml_tar.close()
+
+            # 2. 후처리 for T3Qflow
+            self.postprocess_for_t3qflow(pipeline, pipeline_name, temp_dir)
+
+            final_yaml_path = os.path.join(temp_dir, (pipeline_name+'.yaml'))
+
+            ################################################################################################
+            ################################################################################################
+
+            # Upload the compiled pipeline, create an experiment and run
+            try:
+                description = f"Created with Elyra {__version__} pipeline editor using '{pipeline.source}'."
+                t0 = time.time()
+
+                if pipeline_id is None:
+                    # Upload new pipeline. The call returns
+                    # a unique pipeline id.
+                    kfp_pipeline = \
+                        client.upload_pipeline(final_yaml_path, ############ Here (pipeline_path -> final_yaml_path)
+                                               pipeline_name,
+                                               description)
+                    pipeline_id = kfp_pipeline.id
+                    version_id = None
+                else:
+                    # Upload a pipeline version. The call returns
+                    # a unique version id.
+                    kfp_pipeline = \
+                        client.upload_pipeline_version(final_yaml_path, ##### Here (pipeline_path -> final_yaml_path)
+                                                       pipeline_version_name,
+                                                       pipeline_id=pipeline_id)
+                    version_id = kfp_pipeline.id
+
+                self.log_pipeline_info(pipeline_name, 'pipeline uploaded', duration=(time.time() - t0))
+            except MaxRetryError as ex:
+                raise RuntimeError('Error connecting to pipeline server {}'.format(api_endpoint)) from ex
+
+            except LocationValueError as lve:
+                if api_username:
+                    raise ValueError("Failure occurred uploading pipeline, check your credentials") from lve
+                else:
+                    raise lve
+
+            # Create a new experiment. If it already exists this is
+            # a no-op.
+            experiment = client.create_experiment(name=experiment_name,
+                                                  namespace=user_namespace)
+            self.log_pipeline_info(pipeline_name,
+                                   f'Created experiment {experiment_name}',
+                                   duration=(time.time() - t0_all))
+
+            # Run the pipeline (or specified pipeline version)
+            run = client.run_pipeline(experiment_id=experiment.id,
+                                      job_name=job_name,
+                                      pipeline_id=pipeline_id,
+                                      version_id=version_id)
+
+            self.log_pipeline_info(pipeline_name,
+                                   f"pipeline submitted: {api_endpoint}/#/runs/details/{run.id}",
+                                   duration=(time.time() - t0_all))
+
+            return T3QKfpPipelineProcessorResponse(
+                run_url=f'{api_endpoint}/#/runs/details/{run.id}',
+                object_storage_url=f'{cos_endpoint}',
+                object_storage_path=f'/{cos_bucket}/{cos_directory}',
+            )
+
+        return None
+
+    def export(self, pipeline, pipeline_export_format, pipeline_export_path, overwrite):
+        if pipeline_export_format not in ["yaml", "py"]:
+            raise ValueError("Pipeline export format {} not recognized.".format(pipeline_export_format))
+
+        t0_all = time.time()
+        timestamp = datetime.now().strftime("%m%d%H%M%S")
+        pipeline_name = pipeline.name
+        pipeline_version_name = f'{pipeline_name}-{timestamp}'
+        # work around https://github.com/kubeflow/pipelines/issues/5172
+        experiment_name = pipeline_name.lower()
+        # Unique identifier for the pipeline run
+        job_name = f'{pipeline_name}-{timestamp}'
+        # Unique location on COS where the pipeline run artifacts
+        # will be stored
+        cos_directory = f'{pipeline_name}-{timestamp}'
+
+        # Since pipeline_export_path may be relative to the notebook directory, ensure
+        # we're using its absolute form.
+        absolute_pipeline_export_path = get_absolute_path(self.root_dir, pipeline_export_path)
+
+        runtime_configuration = self._get_metadata_configuration(namespace=MetadataManager.NAMESPACE_RUNTIMES,
+                                                                 name=pipeline.runtime_config)
+        api_endpoint = runtime_configuration.metadata['api_endpoint']
+        namespace = runtime_configuration.metadata.get('user_namespace')
+        engine = runtime_configuration.metadata.get('engine')
+        cos_secret = runtime_configuration.metadata.get('cos_secret')
+
+        if os.path.exists(absolute_pipeline_export_path) and not overwrite:
+            raise ValueError("File " + absolute_pipeline_export_path + " already exists.")
+
+        self.log_pipeline_info(pipeline_name, f"exporting pipeline as a .{pipeline_export_format} file")
+        if pipeline_export_format != "py":
+            # Export pipeline as static configuration file (YAML formatted)
+            try:
+                # Exported pipeline is not associated with an experiment
+                # or a version. The association is established when the
+                # pipeline is imported into KFP by the user.
+                pipeline_function = lambda: self._cc_pipeline(pipeline,  # nopep8
+                                                              '')
+
+                if 'Tekton' == engine:
+                    self.log.info("Compiling pipeline for Tekton engine")
+                    kfp_tekton_compiler.TektonCompiler().compile(pipeline_function, absolute_pipeline_export_path)
+                else:
+                    self.log.info("Compiling pipeline for Argo engine")
+                    kfp_argo_compiler.Compiler().compile(pipeline_function, absolute_pipeline_export_path)
+            except Exception as ex:
+                raise RuntimeError('Error compiling pipeline {} for export at {}'.
+                                   format(pipeline_name, absolute_pipeline_export_path), str(ex)) from ex
+        else:
+            # Export pipeline as Python DSL
+            # Load template from installed elyra package
+
+            loader = PackageLoader('elyra', 'templates/kfp')
+            template_env = Environment(loader=loader, trim_blocks=True)
+
+            template_env.filters['to_basename'] = lambda path: os.path.basename(path)
+
+            template = template_env.get_template('kfp_template.jinja2')
+
+            defined_pipeline = self._cc_pipeline(pipeline,
+                                                 pipeline_name,
+                                                 pipeline_version=pipeline_version_name,
+                                                 experiment_name=experiment_name,
+                                                 cos_directory=cos_directory,
+                                                 export=True)
+
+            description = f'Created with Elyra {__version__} pipeline editor using {pipeline.source}.'
+
+            for key, operation in defined_pipeline.items():
+                self.log.debug("component :\n "
+                               "container op name : %s \n "
+                               "inputs : %s \n "
+                               "outputs : %s \n ",
+                               operation.name,
+                               operation.inputs,
+                               operation.outputs)
+
+            # The exported pipeline is by default associated with
+            # an experiment.
+            # The user can manually customize the generated code
+            # and change the associations as desired.
+
+            python_output = template.render(operations_list=defined_pipeline,
+                                            pipeline_name=pipeline_name,
+                                            pipeline_version=pipeline_version_name,
+                                            experiment_name=experiment_name,
+                                            run_name=job_name,
+                                            engine=engine,
+                                            cos_secret=cos_secret,
+                                            namespace=namespace,
+                                            api_endpoint=api_endpoint,
+                                            pipeline_description=description,
+                                            writable_container_dir=self.WCD)
+
+            # Write to Python file and fix formatting
+            with open(absolute_pipeline_export_path, "w") as fh:
+                autopep_output = autopep8.fix_code(python_output)
+                output_to_file = format_str(autopep_output, mode=FileMode())
+                fh.write(output_to_file)
+
+            self.log_pipeline_info(pipeline_name, "pipeline rendered", duration=(time.time() - t0_all))
+
+        self.log_pipeline_info(pipeline_name,
+                               f"pipeline exported: {pipeline_export_path}",
+                               duration=(time.time() - t0_all))
+
+        return pipeline_export_path  # Return the input value, not its absolute form
+
+    def _cc_pipeline(self,
+                     pipeline,
+                     pipeline_name,
+                     pipeline_version='',
+                     experiment_name='',
+                     cos_directory=None,
+                     export=False):
+
+        runtime_configuration = self._get_metadata_configuration(namespace=MetadataManager.NAMESPACE_RUNTIMES,
+                                                                 name=pipeline.runtime_config)
+
+        cos_endpoint = runtime_configuration.metadata['cos_endpoint']
+        cos_username = runtime_configuration.metadata['cos_username']
+        cos_password = runtime_configuration.metadata['cos_password']
+        cos_secret = runtime_configuration.metadata.get('cos_secret')
+
+        if cos_directory is None:
+            cos_directory = pipeline_name
+        cos_bucket = runtime_configuration.metadata['cos_bucket']
+
+        self.log_pipeline_info(pipeline_name,
+                               f"processing pipeline dependencies to: {cos_endpoint} "
+                               f"bucket: {cos_bucket} folder: {cos_directory}")
+        t0_all = time.time()
+
+        emptydir_volume_size = ''
+        container_runtime = bool(os.getenv('CRIO_RUNTIME', 'False').lower() == 'true')
+
+        # Create dictionary that maps component Id to its ContainerOp instance
+        notebook_ops = {}
+
+        # Sort operations based on dependency graph (topological order)
+        sorted_operations = PipelineProcessor._sort_operations(pipeline.operations)
+
+        # All previous operation outputs should be propagated throughout the pipeline.
+        # In order to process this recursively, the current operation's inputs should be combined
+        # from its parent's inputs (which, themselves are derived from the outputs of their parent)
+        # and its parent's outputs.
+
+        PipelineProcessor._propagate_operation_inputs_outputs(pipeline, sorted_operations)
+
+        ###########################################################################################
+        ###########################################################################################
+        # 각 operation의 input artifacts들을 관리할 dictionary이다.
+        # input_list의 key값은 operation의 id값이며, value값은 tuple set으로 (operation.id, input_file)로 이루어져있다.
+        # value에서 각 tuple의 operation.id는 해당 input_file을 output file로 생성한 operation의 id이다.
+        # 즉, 해당 input_file의 출처(?)라고 볼 수 있겠다.
+        input_list = {}
+        ###########################################################################################
+        ###########################################################################################
+
+        for operation in sorted_operations:
+
+            ###########################################################################################
+            ###########################################################################################
+            # 현 operation의 input_list으로 빈 set을 선언한다.
+            input_list[operation.id]=set()
+
+            # 현 operation의 parent_operation (바로 직전 operation)의 input_list들을 가져온다. 
+            # 부모 operation의 input_list에는 조부모 operation의 input_list와 부모 operation이 생성한
+            # output_file들이 포함되어 있다.
+            for parent_operation_id in operation.parent_operations:
+                input_list[operation.id].update(input_list[parent_operation_id]) 
+            
+            # T3QNotebook op가 input_artifact를 관리하기 위한 parameter로 'artifact_argument_path'가 존재한다.
+            # 이 parameter는 'dsl.InputArgumentPath' list를 인자로 받는다.
+            # 하지만 dsl.InputArgumentPath는 iterable하지 않기 때문에 set의 형태를 쓸 수 없다.
+            # 고로 tuple형태로 set을 관리하고 해당 tuple로부터 element들을 받아와  
+            # dsl.InputArgumentPath의 list인 input_argument_path_list를 생성하고자 한다.
+            input_argument_path_list=[]
+            if input_list[operation.id]:
+                for input_tuple in input_list[operation.id]:
+                    (op_id,input_file) = input_tuple
+                    input_argument_path_list.append( \
+                        InputArgumentPath(notebook_ops[op_id].outputs[input_file.rsplit('.')[0]], \
+                        path='/jupyter-work-dir/{}'.format(input_file)) \
+                    )
+            ###########################################################################################
+            ###########################################################################################
+
+
+            operation_artifact_archive = self._get_dependency_archive_name(operation)
+
+            self.log.debug("Creating pipeline component :\n {op} archive : {archive}".format(
+                           op=operation, archive=operation_artifact_archive))
+
+            if container_runtime:
+                # Volume size to create when using CRI-o, NOTE: IBM Cloud minimum is 20Gi
+                emptydir_volume_size = '20Gi'
+
+            # Collect env variables
+            pipeline_envs = dict()
+            if not cos_secret:
+                pipeline_envs['AWS_ACCESS_KEY_ID'] = cos_username
+                pipeline_envs['AWS_SECRET_ACCESS_KEY'] = cos_password
+            # Convey pipeline logging enablement to operation
+            pipeline_envs['ELYRA_ENABLE_PIPELINE_INFO'] = str(self.enable_pipeline_info)
+            # Setting identifies a writable directory in the container image.
+            # Only Unix-style path spec is supported.
+            pipeline_envs['ELYRA_WRITABLE_CONTAINER_DIR'] = self.WCD
+
+            if operation.env_vars:
+                for env_var in operation.env_vars:
+                    # Strip any of these special characters from both key and value
+                    # Splits on the first occurrence of '='
+                    result = [x.strip(' \'\"') for x in env_var.split('=', 1)]
+                    # Should be non empty key with a value
+                    if len(result) == 2 and result[0] != '':
+                        pipeline_envs[result[0]] = result[1]
+
+            sanitized_operation_name = self._sanitize_operation_name(operation.name)
+
+            ###########################################################################################
+            ###########################################################################################
+            output_list = dict()
+            output_list['mlpipeline-metrics'] = '{}/mlpipeline-metrics.json'\
+                                                            .format(pipeline_envs['ELYRA_WRITABLE_CONTAINER_DIR'])
+            output_list['mlpipeline-ui-metadata'] = '{}/mlpipeline-ui-metadata.json'\
+                                                            .format(pipeline_envs['ELYRA_WRITABLE_CONTAINER_DIR'])
+            if operation.outputs:
+                for output_file_pipeline in operation.outputs:
+                    output_list[output_file_pipeline.rsplit('.')[0]] = '/jupyter-work-dir/{}'\
+                                                                    .format(output_file_pipeline)
+            ###########################################################################################
+            ###########################################################################################
+
+            # create pipeline operation
+            notebook_ops[operation.id] = NotebookOp(name=sanitized_operation_name,
+                                                    pipeline_name=pipeline_name,
+                                                    experiment_name=experiment_name,
+                                                    notebook=operation.filename,
+                                                    cos_endpoint=cos_endpoint,
+                                                    cos_bucket=cos_bucket,
+                                                    cos_directory=cos_directory,
+                                                    cos_dependencies_archive=operation_artifact_archive,
+                                                    pipeline_version=pipeline_version,
+                                                    pipeline_source=pipeline.source,
+                                                    #pipeline_inputs=operation.inputs,
+                                                    #pipeline_outputs=operation.outputs,
+                                                    pipeline_envs=pipeline_envs,
+                                                    emptydir_volume_size=emptydir_volume_size,
+                                                    cpu_request=operation.cpu,
+                                                    mem_request=operation.memory,
+                                                    gpu_limit=operation.gpu,
+                                                    image=operation.runtime_image,
+                                                    #################################################
+                                                    #################################################
+                                                    # kfp.dsl.ContainerOp에서 input artifact를 받는
+                                                    # parameter 'artifact_argument_paths'를 추가해준다.
+                                                    artifact_argument_paths=input_argument_path_list,
+                                                    file_outputs=output_list,
+                                                    ##################################################
+                                                    ##################################################
+                                                    bootstrap_script_url='https://raw.githubusercontent.com/KAIST16-Ryu/CoopT3q/main/'
+                                                                         'custom-bootstrapper.py'
+                                                    )
+
+            ###############################################################################
+            ################################################################################
+            # 다음 operation이 현 operation의 input_list + outputs 파일들을 artifact_argument로 받을 수 있도록,
+            # 현 operation의 input_list에 현 operation의 outputs 파일들을 더한다. 
+            if operation.outputs:
+                for input_file in operation.outputs:
+                    input_list[operation.id].add((operation.id,input_file))
+            ##################################################################################
+            ##################################################################################
+
+            if cos_secret and not export:
+                notebook_ops[operation.id].apply(use_aws_secret(cos_secret))
+
+            image_namespace = self._get_metadata_configuration(namespace=MetadataManager.NAMESPACE_RUNTIME_IMAGES)
+            for image_instance in image_namespace:
+                if image_instance.metadata['image_name'] == operation.runtime_image and \
+                   image_instance.metadata.get('pull_policy'):
+                    notebook_ops[operation.id].container.set_image_pull_policy(image_instance.metadata['pull_policy'])
+
+            self.log_pipeline_info(pipeline_name,
+                                   f"processing operation dependencies for id: {operation.id}",
+                                   operation_name=operation.name)
+
+            self._upload_dependencies_to_object_store(runtime_configuration,
+                                                      cos_directory,
+                                                      operation)
+
+        # Process dependencies after all the operations have been created
+        for operation in pipeline.operations.values():
+            op = notebook_ops[operation.id]
+            for parent_operation_id in operation.parent_operations:
+                parent_op = notebook_ops[parent_operation_id]  # Parent Operation
+                op.after(parent_op)
+
+        self.log_pipeline_info(pipeline_name, "pipeline dependencies processed", duration=(time.time() - t0_all))
+
+        return notebook_ops
+
+    @staticmethod
+    def _sanitize_operation_name(name: str) -> str:
+        """
+        In KFP, only letters, numbers, spaces, "_", and "-" are allowed in name.
+        :param name: name of the operation
+        """
+        return re.sub('-+', '-', re.sub('[^-_0-9A-Za-z ]+', '-', name)).lstrip('-').rstrip('-')
+
+    @staticmethod
+    def _get_user_auth_session_cookie(url, username, password):
+        get_response = requests.get(url)
+
+        # auth request to kfp server with istio dex look like '/dex/auth/local?req=REQ_VALUE'
+        if 'auth' in get_response.url:
+            credentials = {'login': username, 'password': password}
+
+            # Authenticate user
+            session = requests.Session()
+            session.post(get_response.url, data=credentials)
+            cookie_auth_key = 'authservice_session'
+            cookie_auth_value = session.cookies.get(cookie_auth_key)
+
+            if cookie_auth_value:
+                return cookie_auth_key + '=' + cookie_auth_value
+
+    # Work here.
+    # T3Q Platform Department Intern Ryu Eojin handle this.
+    ############################################################################################
+    ############################################################################################
+    def postprocess_for_t3qflow (self, pipeline, pipeline_name, temp_dir):
+
+        kfp_yaml = {}
+        with open (os.path.join(temp_dir, 'pipeline.yaml'), "r") as file_yaml:
+            kfp_yaml = yaml.load(file_yaml)
+        
+            # 1. parameters 는 템플릿 당 필요한 파라미터들을 가진 딕셔너리. -> 를 생성.
+            parameters = {}
+            total_params = []
+            for key, value in pipeline.operations.items():
+                temp_parameters = []
+                if value._env_vars:
+                    for one_env in value._env_vars:
+                        env_key, env_var = one_env.split('=')
+                        temp_parameters.append( \
+                            {'name': env_key, 'value': '{{inputs.parameters.%s}}' %(env_key)})
+                        total_params.append({'name': env_key, 'value': env_var})
+
+                    node_name = value._name.lower()
+                    parameters[node_name] = copy.deepcopy(temp_parameters)
+
+            
+            # 2. yaml 가장 아래의 spec.arguments.parameters 추가.
+            kfp_yaml['spec']['arguments']['parameters'] = copy.deepcopy(total_params)
+
+            # 3. dag의 inpus 항목에 필요한 total_param_names 생성.
+            total_param_names = [{'name': param_dict['name']} for param_dict in total_params]
+
+            for template in kfp_yaml['spec']['templates']:
+                if 'dag' in template:
+                    # 4. dag 의 inputs 항목 추가.
+                    template['inputs'] = { 'parameters': total_param_names }
+
+                    # 5. dag의 개별 dag_template 의 arguments.parameters 추가.
+                    for dag_template in template['dag']['tasks']:
+                        template_name = dag_template['name']
+                        if template_name in parameters.keys():
+                            if 'arguments' not in dag_template:
+                                dag_template['arguments'] = {'parameters': []}
+                            else :
+                                dag_template['arguments']['parameters'] = []
+
+                            for template_param in parameters[template_name]:
+                                dag_template['arguments']['parameters'].append(template_param)
+
+                elif 'container' in template:
+                    container_name = template['name']
+                    if container_name in parameters.keys():
+                        # 6. 개별 container 의 inputs parameters 추가.
+                        if 'inputs' not in template:
+                            template['inputs'] = {'parameters': []}
+                        else :
+                            template['inputs']['parameters'] = []
+                            
+                        for container_param in parameters[container_name]:
+                            template['inputs']['parameters'].append( \
+                                            {'name': container_param['name']})
+                        
+                        for env in template['container']['env']:
+                            param_list = \
+                                [temp_param['name'] for temp_param in parameters[container_name]]
+                            if env['name'] in param_list:
+                                env['value'] = '{{inputs.parameters.%s}}' %(env['name'])
+                else:
+                    pass
+
+
+
+        with open(os.path.join(temp_dir, (pipeline_name+'.yaml')), "w") as new_yaml:
+        #with open(os.path.join('/home/t3qmember/Desktop/t3qflowdemo', pipeline_name+'.yaml'), \
+        #                                                                     "w") as new_yaml:
+            yaml.dump(kfp_yaml, new_yaml)
+    ############################################################################################
+    ############################################################################################
+
+class T3QKfpPipelineProcessorResponse(PipelineProcessorResponse):
+
+    _type = 'kfp'
+
+    def __init__(self, run_url, object_storage_url, object_storage_path):
+        super().__init__(run_url, object_storage_url, object_storage_path)
+
+    @property
+    def type(self):
+        return self._type
