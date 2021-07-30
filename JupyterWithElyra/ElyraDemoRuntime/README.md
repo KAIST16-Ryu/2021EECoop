@@ -42,6 +42,6 @@ site-packages/elyra-2.2.4.dist-info/entry_points.txt 문서의 내용에서 `[el
 <br/> 둘 중 후자의 폴더에 해당 customizing한 요소들을 집어 넣어주어야 한다.
 
 2. 추가적인 코드 
-![image](/uploads/8eb1833dfe9cead50dc8482c5e2b12bb/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127621457-7b18554f-75f5-410b-a37a-5444b32051b9.png)
 <br/> 우선 위와 같이 demo runtime을 등록은 할 수 있었다. 또한 runtime이나 pipeline에 대한 metadata를 읽어 로그로도 잘 찍어냈다. 하지만 그 외에도 살펴보아야 할 코드들이 있을 듯 하다.
 - elyra/elyra/pipeline/parser.py
