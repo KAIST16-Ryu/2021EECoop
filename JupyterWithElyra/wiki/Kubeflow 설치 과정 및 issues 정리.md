@@ -22,7 +22,7 @@
 - 여기에도 microk8s 를 설치하는 방법이 설명되어 있다. 이곳의 설치 과정을 따른다. 중간 중간 설명한 부분과 다르게 설치한 부분은 아래에서 설명한다. 기본적으로 설치 환경, 및 시기에 따라서 설치 방법이 변동될 수 있기 때문에 설명을 참고하여 개별적으로 설치하는 것을 권장한다.
 
 # 1.
-![image](uploads/18926ea958ce7e5b6c032805d8f238f3/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127605667-d6a82f96-087f-49ec-a8c5-3d71778b32c6.png)
 -------------------------------------------------------------------------------------------------
 
 - microk8s 의 특정 버전을 선택해서 설치할 수 있다. --classic 옵션과 --channel 옵션을 활용한다.
@@ -31,18 +31,18 @@
 <br/>
 
 # 2.
-![image](uploads/ac8f8c3f268797347ae15727e9d6d61f/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127605691-06a1733b-d5ae-4727-bcf7-909df7b436d6.png)
 -------------------------------------------------------------------------------------------------
 
 - microk8s 는 kubernetes 의 light weight version 이다. 따라서 실제로 필요한 몇몇 추가적인 툴들을 모듈처럼 추가 설치하여 사용할 수 있도록 제공하고 있다. kubeflow 를 사용하기 위해서 필요한 add-on 를 다음 이미지에서 추가하여 설치한다. 별도로 추가하고 싶은 항목은 개별적으로 추가한다. 전체 항목은 아래 그림과 같다. **여기서 add-on으로 kubeflow를 설치하면 제대로 설치되지 않으니 kubeflow 는 add-on을 사용하여 설치하지 않고 아래 방법을 따라서 설치하는 것을 추천한다.**
 
-![image](uploads/16a4c3061073676c13d535e6d4a99e2d/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127605728-c2bad6c1-8fe9-46bd-9c2a-28a4fe653be8.png)
 
 <br/>
 <br/>
 
 # 3.
-![image](uploads/b680113d5716c94a508de27ff1d9ebd6/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127605763-c60a0283-46fb-499c-a0ac-884d1585eca1.png)
 -------------------------------------------------------------------------------------------------
 
 git issue URL - https://github.com/kubeflow/manifests/issues/959
@@ -55,13 +55,13 @@ git issue URL - https://github.com/kubeflow/manifests/issues/959
 --service-account-issuer=kubernetes.default.svc
 
 - 추가했을 때 설정 파일은 다음과 같다.<br/>
-![image](uploads/f7e85b02b4bc7f098e21aa3f5552e571/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127605812-363bd811-7280-407e-b622-1bacbdba02af.png)
 
 <br/>
 <br/>
 
 # 4.
-![image](uploads/02ec5decce6302f07ceb8fd9c49a5640/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127605862-c5ca65ef-af75-41d5-b0cb-ed33307963b4.png)
 -------------------------------------------------------------------------------------------------
 
 - microk8s 를 재시작한다.
@@ -70,7 +70,7 @@ git issue URL - https://github.com/kubeflow/manifests/issues/959
 <br/>
 
 # 5.
-![image](uploads/f77deb185780055e26132417444315fe/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127605941-4b67381c-1b60-4277-b647-025f77fa6cd9.png)
 -------------------------------------------------------------------------------------------------
 
 - microk8s 에서 사용하는 kube config 항목을 추가한다. (이유는 잘 모르겠다...)
@@ -80,7 +80,7 @@ git issue URL - https://github.com/kubeflow/manifests/issues/959
 <br/>
 
 # 6.
-![image](uploads/37ea8aa07907980fce4522a98557cb50/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127605986-68563fb0-6054-4010-8b66-7121c3f8b9ef.png)
 -------------------------------------------------------------------------------------------------
 
 1) kfctl 을 실행할 수 있는 압축 파일을 원하는 경로에 다운로드 받는다.
@@ -95,14 +95,14 @@ git issue URL - https://github.com/kubeflow/manifests/issues/959
 
   - 다음 명령어를 추가하여 PATH 환경변수에 추가한다.
 ` $ export PATH=(추가할 경로)${PATH:+:${PATH}} `<br />
-  ![image](uploads/df714f6a0da25ec67d25ce76bcfa7ab6/image.png)
+  ![image](https://user-images.githubusercontent.com/71695489/127607302-8b7ae892-edc3-4e76-bcb2-8bdda8be6c4d.png)
 
 
 <br/>
 <br/>
 
 # 7.
-![image](uploads/6982029e2eb1657ba333a07904bc84e0/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127607393-f95c3d7b-fa10-47be-a31b-c0bd21aa2635.png)
 -------------------------------------------------------------------------------------------------
 
 1) Kubeflow 기본 manifests 에서 필요한 버전 및 양식에 대한 yaml 을 찾아서 설치할 수 있다.
@@ -121,7 +121,7 @@ git issue URL - https://github.com/kubeflow/manifests/issues/959
 <br/>
 
 # 8.
-![image](uploads/cd7c3e5b51c51d7f0c6d1ffbe9fba4c5/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127607466-5dec2cf9-5a53-4139-975f-2de419748bfb.png)
 -------------------------------------------------------------------------------------------------
 
 1) Argo Workflow 를 통해서 파드가 생성되도록 하려면 몇몇 설정을 추가해야 한다. 위 그림의 안내에 따른다.
@@ -134,7 +134,7 @@ git issue URL - https://github.com/kubeflow/manifests/issues/959
  ` --container-runtime=docker `
 
   - 내용은 다음과 같이 작성되어야 한다.<br />
-![image](uploads/05c0297a2bf5cfee2a0dea13b1495231/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127607521-10939b21-fc8f-4dd7-a6d4-1738bc427c61.png)
 
 <br/>
 
@@ -146,7 +146,7 @@ git issue URL - https://github.com/kubeflow/manifests/issues/959
 
 # 9. Kubeflow Dashboard URL 접속
 
-![image](uploads/140deccf8216d073680911619acba2fb/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127607570-28ce2922-9297-42d8-a7d3-95d2d43d998a.png)
 ---
 - 위의 그림에서는 다음 명령어를 통해서 대시보드 URL 에 접속할 수 있다고 설명하지만, 이 방법에 따르지 않고 아래 안내에 따른다.
 
@@ -154,15 +154,15 @@ git issue URL - https://github.com/kubeflow/manifests/issues/959
 
 - 따라서 다음 명령어를 사용하여 리소스를 확인해 보면, ` $ kubectl describe svc/istio-ingressgateway -n istio-system ` 아래 그림처럼 리소스를 확인할 수 있다.
 
-![image](uploads/1be25fbdf4457609d4df2b831ce85bee/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127607616-a81cdcd8-edeb-498b-9909-53b5609c9680.png)
 
 - 위 그림에서 보면 http2 통신 포트가 31380 이기 때문에, 노드 IP (**현재 작성자 노트북의 경우, 192.168.0.127**) 의 Kubeflow DashBoard 에 접속하기 위해서 다음과 같이 입력해보면, ` http://192.168.0.127:31380 `
 
-![image](uploads/74d9e41bba42d71b00ee2480518d6f60/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127607664-49e6191e-8620-4b8a-a5d4-4cc2c5f81a49.png)
 
 - 다음과 같은 로그인 화면이 뜨고, 기본으로 설정된 email: admin@kubeflow.org, password: 12341234 를 입력하면,
 
-![image](uploads/a50951aafa3b25f908e5542faa7eb6fe/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127607723-9460881d-d25e-4069-ad7e-37a6c16d1f3b.png)
 
 - 다음과 같이 Kubeflow Dashboard 에 접속한 것을 확인할 수 있다.!
 
