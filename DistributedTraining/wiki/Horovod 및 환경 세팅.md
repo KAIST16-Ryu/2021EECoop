@@ -62,7 +62,7 @@ $ sudo apt-get install -y ca-certificates
 
 https://developer.nvidia.com/nccl/nccl-legacy-downloads
 
-![image](uploads/73ad4a706cda5267af90c5a65c515072/image.png)
+![image](https://user-images.githubusercontent.com/71695489/127611039-d807bf5c-f68f-4c13-b119-70360075234d.png)
 
 다운 받았으면 다음 명령어를 통해서 압축을 해제하고, 필요한 툴을 설치한다.
 
