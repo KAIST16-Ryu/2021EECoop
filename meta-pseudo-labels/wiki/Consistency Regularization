@@ -1,0 +1,46 @@
+모델의 input에 **data augmentation** 기법을 통해 새로운 input을 만들었을 때, output (prediction)이 유사해야 한다는 가정을 바탕으로 모델을 regularize하는 방법을 말한다. Consistency Regularization에 대해 더 말하기에 앞서 Data augmentation에 대해 더 알아보고자 한다.
+
+# Data Augmentation
+>It is a technique used to _increase the amount of data_ by adding slightly modified copies of already existing data or newly created synthetic data from existing data. It acts as a _regularizer_ and helps _reduce overfitting_ when training a machine learning model.  - Wikipedia
+
+즉, data augmentation이란, data의 양을 늘리기 위해 원본 data에 여러가지 변환을 적용하는 기법을 뜻한다. 이를 통해, 원본 data보다 더 많은 새로운 유사 data들을 생성할 수 있으며 이는 overfitting을 줄이거나 regularizer의 역할을 함으로써 model의 성능을 높일 수 있다. Data augmentation 기법에는 아래와 같은 것들이 있다.
+
+Ex) Rotation, Crop, Resize, Flip, etc.
+
+![image](https://user-images.githubusercontent.com/84768279/127600934-037970f9-2c73-4060-a852-39e5d2badbf4.png)
+
+
+#### **CutOut / MixUp / CutMix**
+
+이 기법들도 Data Augmentation 기법들 중 하나이다.
+
+아래의 이미지를 보면 세가지 기법 중 CutMix가 가장 결과가 좋음을 알 수 있다.
+
+![image](https://user-images.githubusercontent.com/84768279/127600939-00c756fb-9534-4b4f-862d-2c2a1f8af477.png)
+
+위의 사진을 보면 mixup과 cutout, cutmix가 무엇인지 감이 온다.
+
+
+##### CutOut
+:Data가 (x,y) 일 때, x에 rectangular한 구역의 값을 0으로 만들어서 (x',y) training 시킨다.
+
+##### MixUp
+: Data가 (x_i,y_i)과 (x_j, y_j)가 있을 때, x_i의 비율을 λ, x_j의 비율을 1-λ로 하여 input들을 합쳐 새로운 label을 만들어 input으로 사용한다.<br/>
+![image](https://user-images.githubusercontent.com/84768279/127600947-33ea4555-8d3b-4336-af17-eb59f3561ffb.png)
+
+##### CutMix
+: CutOut와 비슷하지만 CutMix의 경우 rectangular area에 다른 input을 넣는다. Original data가 (x_A, y_A), (x_B, y_B)일 때, CutMix로 만든 new label의 식은 아래와 같다.<br/>
+![image](https://user-images.githubusercontent.com/84768279/127600950-51341faa-1c86-4d19-a5bd-c87e5d189cf2.png)<br/>
+여기서 M ∈ {0,1} W × H는 두 이미지에서 Dropout하고 채울 위치를 나타내는 바이너리 마스크를 나타낸다.
+
+
+CutMix의 경우 앞에서 말했듯이 다양한 딥러닝 문제에서 CutOut이나 MixUp보다 더 나은 성능을 보여준다. 하지만 두 input을 서로 떼어 붙이는 과정에서 원본 input이 가지는 의미론적 속성 (semantic Properties)를 잃을 수 있다는 단점이 있다.
+
+MixUp의 경우 label noise가 있는 경우에도 좋은 성능을 보였으나 input이 부자연스럽다는 단점이 있다. 
+
+# Consistency Regularization
+앞서서 consistency regularization을 _모델의 input에 **data augmentation** 기법을 통해 새로운 input을 만들었을 때, output (prediction)이 유사해야 한다는 가정을 바탕으로 모델을 regularize하는 방법_ 이라고 설명했다. 그림으로 보면 다음과 같다.
+
+![image](https://user-images.githubusercontent.com/84768279/127961799-b495343d-8882-4aa1-bd45-67c1f4013d68.png)
+
+이론은 크게 어렵지 않다. 어떤 차 사진이 있고, 이 사진을 뒤집은 사진이 있을 때, 모델은 두 사진에 대해 유사한 prediction을 내야한다. 그리고 위의 사진에서 볼 수 있듯이 두 prediction의 차(consistency regularization loss)를 squared difference로 계산해서 구한다.
